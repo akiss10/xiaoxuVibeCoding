@@ -1,0 +1,18 @@
+{
+  "name": "confession-gsap",
+  "private": true,
+  "version": "1.0.0",
+  "description": "\u4e00\u4e2a\u7528 GSAP \u505a\u7684\u8868\u767d\u4ea4\u4e92\u9875\u9762\uff08\u591a\u573a\u666f\u7535\u5f71\u5f0f\uff09",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "gsap": "^3.15.0"
+  },
+  "devDependencies": {
+    "vite": "^8.3.0"
+  }
+}

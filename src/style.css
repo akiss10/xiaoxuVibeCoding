@@ -1,0 +1,745 @@
+/* ============================================================
+   表白页 · 视觉样式
+   GSAP 负责动画，这里只负责"长得好看"和初始状态
+   ============================================================ */
+
+:root {
+  --bg-deep: #07060f;
+  --bg-warm: #1b0d1c;
+  --rose: #ff5c8a;
+  --gold: #ffd8a8;
+  --violet: #a15cff;
+  --text: #f6eef4;
+  --text-dim: rgba(246, 238, 244, 0.62);
+  --text-faint: rgba(246, 238, 244, 0.34);
+
+  /* JS 里会覆盖成配置里的颜色 */
+  --scene-font: "Songti SC", "Noto Serif SC", "Source Han Serif SC", "SimSun", "STSong", serif;
+  --ui-font: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg-deep);
+  color: var(--text);
+  font-family: var(--ui-font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  cursor: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: none) {
+  body {
+    cursor: auto;
+  }
+}
+
+/* ---------------- 背景 ---------------- */
+
+#starfield {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+}
+
+body::before {
+  /* 夜空渐变 + 一点点暖光，营造"深夜房间"的氛围 */
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(120% 80% at 50% 110%, rgba(255, 92, 138, 0.22) 0%, transparent 60%),
+    radial-gradient(90% 60% at 12% 8%, rgba(161, 92, 255, 0.16) 0%, transparent 62%),
+    linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-warm) 55%, #120714 100%);
+}
+
+.grain {
+  position: fixed;
+  inset: -50%;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.fx-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.mouse-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 46vmax;
+  height: 46vmax;
+  margin: -23vmax 0 0 -23vmax;
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(circle, rgba(255, 92, 138, 0.13) 0%, transparent 62%);
+  will-change: transform;
+}
+
+/* 飘落的花瓣 */
+.petal {
+  position: absolute;
+  top: -8vh;
+  width: 12px;
+  height: 12px;
+  border-radius: 60% 10% 60% 10%;
+  background: linear-gradient(140deg, rgba(255, 216, 168, 0.9), rgba(255, 92, 138, 0.75));
+  opacity: 0.5;
+  will-change: transform;
+}
+
+/* ---------------- 主舞台 ---------------- */
+
+.app {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(20px, 5vw, 64px);
+  visibility: hidden;
+  opacity: 0;
+}
+
+.scene-inner {
+  position: relative;
+  width: min(760px, 100%);
+}
+
+.scene-inner.center {
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0 0 clamp(14px, 2.4vh, 26px);
+  font-size: clamp(11px, 1.5vw, 13px);
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.lead {
+  margin: 0;
+  font-family: var(--scene-font);
+  font-size: clamp(19px, 3.1vw, 30px);
+  line-height: 1.85;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+/* ---------------- 封面 ---------------- */
+
+.halo {
+  position: absolute;
+  width: min(78vmin, 620px);
+  height: min(78vmin, 620px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 92, 138, 0.2) 0%, transparent 68%);
+  filter: blur(6px);
+}
+
+.cover-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: clamp(10px, 1.6vh, 20px);
+}
+
+.cover-title {
+  margin: 0;
+  font-family: var(--scene-font);
+  font-size: clamp(28px, 5.4vw, 56px);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  line-height: 1.4;
+  /* 纯色 + 发光：刻意不用 background-clip:text 渐变文字，
+     那套写法在元素上还挂着 GSAP 内联样式时会让整行字不显示。 */
+  color: var(--text);
+  text-shadow: 0 0 24px rgba(255, 92, 138, 0.5), 0 0 68px rgba(255, 92, 138, 0.25);
+}
+
+.cover-heart {
+  width: clamp(96px, 16vmin, 168px);
+  margin: clamp(4px, 1vh, 12px) 0;
+}
+
+.cover-heart svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 0 22px rgba(255, 92, 138, 0.45));
+}
+
+.cover-sub {
+  margin: 0;
+  font-family: var(--scene-font);
+  font-size: clamp(14px, 1.9vw, 19px);
+  letter-spacing: 0.22em;
+  color: var(--text-dim);
+}
+
+.cover-tip {
+  margin: 6px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--text-faint);
+}
+
+.enter-btn {
+  position: relative;
+  margin-top: clamp(6px, 1.4vh, 16px);
+  padding: 15px 42px;
+  border: 1px solid rgba(255, 216, 168, 0.42);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: 15px;
+  letter-spacing: 0.3em;
+  cursor: none;
+  backdrop-filter: blur(6px);
+  transition: border-color 0.4s ease, background 0.4s ease;
+}
+
+.enter-btn:hover {
+  border-color: rgba(255, 216, 168, 0.9);
+  background: rgba(255, 92, 138, 0.1);
+}
+
+.enter-ring {
+  position: absolute;
+  inset: -1px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 92, 138, 0.55);
+  opacity: 0;
+}
+
+/* ---------------- 第一幕：名字 ---------------- */
+
+.her-name {
+  margin: clamp(8px, 2vh, 22px) 0 0;
+  font-family: var(--scene-font);
+  font-size: clamp(48px, 13vw, 132px);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  line-height: 1.15;
+  color: #fff7ef;
+  text-shadow: 0 0 30px rgba(255, 92, 138, 0.65), 0 0 90px rgba(255, 92, 138, 0.35);
+  filter: drop-shadow(0 0 30px rgba(255, 92, 138, 0.35));
+}
+
+.her-name .char {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+.lead.after {
+  margin-top: clamp(14px, 3vh, 34px);
+  white-space: pre-line;
+}
+
+/* ---------------- 第二幕：心跳 ---------------- */
+
+.beat-lines {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 2.6vh, 26px);
+  margin: 0 auto;
+  max-width: 20em;
+}
+
+.beat-line {
+  margin: 0;
+  font-family: var(--scene-font);
+  font-size: clamp(20px, 3.4vw, 34px);
+  line-height: 1.7;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  opacity: 0;
+}
+
+.beat-line .char {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+.pulse-heart {
+  width: clamp(58px, 9vmin, 88px);
+  margin: clamp(24px, 5vh, 48px) auto 0;
+  opacity: 0.9;
+}
+
+.pulse-heart svg {
+  display: block;
+  width: 100%;
+  filter: drop-shadow(0 0 16px rgba(255, 92, 138, 0.5));
+}
+
+/* ---------------- 第三幕：信 ---------------- */
+
+.letter {
+  position: relative;
+  margin: 0 auto;
+  width: min(680px, 100%);
+  padding: clamp(26px, 5vw, 56px) clamp(22px, 5vw, 54px);
+}
+
+.letter-paper {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background:
+    linear-gradient(155deg, rgba(255, 246, 250, 0.14), rgba(255, 255, 255, 0.05)),
+    radial-gradient(120% 90% at 20% 0%, rgba(255, 92, 138, 0.14), transparent 70%);
+  border: 1px solid rgba(255, 216, 168, 0.3);
+  box-shadow:
+    0 34px 90px -42px rgba(0, 0, 0, 0.95),
+    0 0 60px -20px rgba(255, 92, 138, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.letter-sheen {
+  /* 让"一道光扫过信纸"变成纯粹的 transform+opacity 动画 */
+  position: absolute;
+  left: -6%;
+  right: -6%;
+  top: 0;
+  height: 38%;
+  overflow: hidden;
+  border-radius: 6px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(255, 236, 214, 0.13) 45%,
+    rgba(255, 216, 168, 0.19) 50%,
+    rgba(255, 236, 214, 0.13) 55%,
+    transparent
+  );
+  opacity: 0;
+  transform: translate3d(0, -60%, 0);
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+.letter-body {
+  position: relative;
+  font-family: var(--scene-font);
+  font-size: clamp(16px, 2.3vw, 22px);
+  line-height: 2.15;
+  letter-spacing: 0.07em;
+  color: var(--text);
+}
+
+.letter-entry {
+  margin: 0;
+}
+
+/* 段间空行（真正的元素，不靠换行符） */
+.letter-gap {
+  display: block;
+  height: 1.15em;
+}
+
+.letter-body .line {
+  display: block;
+}
+
+.letter-body .char {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+.letter-sign {
+  position: relative;
+  margin: clamp(20px, 3.4vh, 34px) 0 0;
+  font-family: var(--scene-font);
+  font-size: clamp(14px, 1.9vw, 18px);
+  letter-spacing: 0.14em;
+  text-align: right;
+  color: var(--text-dim);
+}
+
+.sign-name {
+  color: var(--gold);
+}
+
+/* ---------------- 第四幕：提问 ---------------- */
+
+.question {
+  margin: 0 0 clamp(28px, 5vh, 52px);
+  font-family: var(--scene-font);
+  font-size: clamp(28px, 5.6vw, 58px);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  text-shadow: 0 0 26px rgba(255, 92, 138, 0.55), 0 0 72px rgba(255, 92, 138, 0.3);
+}
+
+.answer-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 4vw, 42px);
+  min-height: 76px;
+}
+
+/* 点"好呀"之后飞出去的那颗心 */
+.heart-plane {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9;
+  color: var(--rose);
+  font-size: 26px;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 0 14px rgba(255, 92, 138, 0.9));
+  will-change: transform;
+}
+
+/* 切换场景时，上一幕整体淡出并轻微缩小 */
+.scene.is-leaving {
+  pointer-events: none;
+}
+
+.btn {
+  border: 0;
+  font-family: var(--ui-font);
+  font-size: clamp(15px, 2vw, 18px);
+  letter-spacing: 0.16em;
+  cursor: none;
+  will-change: transform;
+}
+
+.btn-yes {
+  padding: 16px 46px;
+  border-radius: 999px;
+  color: #2b0716;
+  font-weight: 600;
+  background: linear-gradient(120deg, var(--gold), var(--rose));
+  box-shadow: 0 14px 40px -14px rgba(255, 92, 138, 0.9);
+}
+
+.btn-no {
+  padding: 15px 32px;
+  border-radius: 999px;
+  color: var(--text-dim);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.02);
+  position: relative;
+  z-index: 2;
+}
+
+.whisper {
+  min-height: 1.6em;
+  margin: clamp(22px, 4vh, 40px) 0 0;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  color: var(--text-faint);
+}
+
+/* ---------------- 第五幕 ---------------- */
+
+.final-big {
+  margin: 0 auto clamp(24px, 4vh, 40px);
+  max-width: 18em;
+  font-family: var(--scene-font);
+  font-size: clamp(24px, 4.6vw, 46px);
+  font-weight: 500;
+  line-height: 1.65;
+  letter-spacing: 0.1em;
+  white-space: pre-line;
+  color: var(--text);
+  text-shadow: 0 0 26px rgba(255, 92, 138, 0.55), 0 0 72px rgba(255, 92, 138, 0.3);
+}
+
+.final-heart {
+  width: clamp(84px, 14vmin, 140px);
+  margin: 0 auto;
+}
+
+.final-heart svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 0 34px rgba(255, 92, 138, 0.6));
+}
+
+.final-date {
+  margin: clamp(18px, 3vh, 30px) 0 0;
+  font-size: 13px;
+  letter-spacing: 0.42em;
+  color: var(--text-faint);
+}
+
+.final-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: clamp(24px, 4vh, 40px);
+}
+
+.btn-ghost {
+  padding: 12px 26px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--text-dim);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  transition: color 0.35s ease, border-color 0.35s ease;
+}
+
+.btn-ghost:hover {
+  color: var(--text);
+  border-color: rgba(255, 216, 168, 0.6);
+}
+
+/* ---------------- HUD ---------------- */
+
+.hud {
+  position: fixed;
+  z-index: 6;
+  top: max(18px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(760px, calc(100% - 40px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rail {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rail-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--gold), var(--rose));
+  will-change: width;
+}
+
+.rail-dot {
+  position: relative;
+  z-index: 1;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background 0.4s ease, transform 0.4s ease;
+}
+
+.rail-dot.is-on {
+  background: var(--gold);
+  transform: scale(1.5);
+}
+
+.hud-right {
+  pointer-events: auto;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: none;
+  transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+.icon-btn:hover {
+  color: var(--text);
+  border-color: rgba(255, 216, 168, 0.5);
+}
+
+.skip-hint {
+  position: fixed;
+  z-index: 6;
+  left: 50%;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.34em;
+  color: var(--text-faint);
+  opacity: 0;
+  pointer-events: none;
+  animation: hint-breathe 3.4s ease-in-out infinite;
+}
+
+@keyframes hint-breathe {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+/* ---------------- 彩蛋 ---------------- */
+
+.secret {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  visibility: hidden;
+  opacity: 0;
+  background: rgba(7, 6, 15, 0.86);
+  backdrop-filter: blur(10px);
+  cursor: none;
+}
+
+.secret-card {
+  max-width: 30em;
+  text-align: center;
+}
+
+.secret-label {
+  margin: 0 0 12px;
+  font-size: 11px;
+  letter-spacing: 0.42em;
+  color: var(--text-faint);
+}
+
+.secret-title {
+  margin: 0 0 18px;
+  font-family: var(--scene-font);
+  font-size: clamp(22px, 4vw, 36px);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+}
+
+.secret-body {
+  margin: 0;
+  white-space: pre-line;
+  font-family: var(--scene-font);
+  font-size: clamp(16px, 2.2vw, 21px);
+  line-height: 2;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+/* ---------------- 自定义光标 ---------------- */
+
+.cursor,
+.cursor-dot {
+  position: fixed;
+  z-index: 99;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.cursor {
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 1px solid rgba(255, 216, 168, 0.65);
+  will-change: transform;
+}
+
+.cursor-dot {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  background: var(--rose);
+  box-shadow: 0 0 12px 2px rgba(255, 92, 138, 0.8);
+  will-change: transform;
+}
+
+.cursor.is-hot {
+  border-color: rgba(255, 92, 138, 0.95);
+}
+
+@media (hover: none) {
+  .cursor,
+  .cursor-dot {
+    display: none;
+  }
+}
+
+/* js 生成的点击爱心 */
+.spark {
+  position: fixed;
+  z-index: 7;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  pointer-events: none;
+  background: linear-gradient(140deg, var(--gold), var(--rose));
+  border-radius: 60% 10% 60% 10%;
+  will-change: transform, opacity;
+}
+
+/* ---------------- 无障碍 / 小屏 ---------------- */
+
+@media (max-width: 480px) {
+  .eyebrow {
+    letter-spacing: 0.3em;
+  }
+  .answer-row {
+    min-height: 64px;
+  }
+}

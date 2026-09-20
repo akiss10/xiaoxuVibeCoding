@@ -390,70 +390,107 @@ export function buildScene4(el, ctx) {
     }, "ready");
   }
 
-  /* ---------- "不要"的逃跑逻辑 ---------- */
+  /* ============================================================
+     "不要"按钮的逃跑逻辑
+     ------------------------------------------------------------
+     关键：必须监听**全局**指针位置，不能只挂在按钮自己身上。
+     按钮是 <button>，指针一旦真的移到它上面，浏览器就会先派发 click ——
+     等 pointermove 再躲已经太晚了。所以在整个窗口上监听，指针进到
+     安全距离内就提前跑掉，这样"点不到"才成立。
+     ============================================================ */
+  const noHome = { x: 0, y: 0 };
   let dodges = 0;
   let lastTaunt = 0;
-  const base = { x: 0, y: 0 };
-  const xTo = gsap.quickTo(el.btnNo, "x", { duration: 0.34, ease: "power3" });
-  const yTo = gsap.quickTo(el.btnNo, "y", { duration: 0.34, ease: "power3" });
+  let armed = false; // 这一幕是否正在进行
 
-  function dodge(e) {
-    if (ctx.isDone()) return;
-    const point = e.touches ? e.touches[0] : e;
+  const noX = gsap.quickTo(el.btnNo, "x", { duration: 0.32, ease: "power3" });
+  const noY = gsap.quickTo(el.btnNo, "y", { duration: 0.32, ease: "power3" });
+
+  const clamp = gsap.utils.clamp;
+
+  /** 记录按钮的原位（等入场动画结束、位置稳定后再量） */
+  function captureHome() {
+    gsap.set(el.btnNo, { x: 0, y: 0 });
+    const r = el.btnNo.getBoundingClientRect();
+    noHome.x = 0;
+    noHome.y = 0;
+    noHome.w = r.width;
+    noHome.h = r.height;
+    noHome.left = r.left;
+    noHome.top = r.top;
+  }
+
+  function dodgeAt(px, py) {
+    // 只看"这一幕在不在演"，不参考"整部片播完没有"。
+    // 之前这里用 ctx.isDone()，而它表示整部影片播到结尾 ——
+    // 一旦看完整片再回第四幕，按钮就再也不躲了。
+    if (!armed) return;
+    if (px === undefined || py === undefined) return;
+
     const r = el.btnNo.getBoundingClientRect();
     const cx = r.left + r.width / 2;
     const cy = r.top + r.height / 2;
-    const dx = cx - point.clientX;
-    const dy = cy - point.clientY;
+    const dx = cx - px;
+    const dy = cy - py;
     const dist = Math.hypot(dx, dy) || 1;
 
-    // 离得远就先不动，靠近了才慌
-    if (dist > (mobile ? 92 : 76)) return;
+    // 离得远就先不动，进到安全距离才慌
+    const safe = mobile ? 118 : 104;
+    if (dist > safe) return;
 
-    const push = dist < 34 ? 300 : 230;
-    const jitter = gsap.utils.random(-0.6, 0.6);
-    let nx = base.x + (dx / dist) * push + jitter * 90;
-    let ny = base.y + (dy / dist) * push + gsap.utils.random(-70, 70);
+    const push = dist < 45 ? 340 : 270;
+    const margin = 18;
+    // 以"当前可视位置"为基准往外跳，再夹回视口内
+    let nx = gsap.getProperty(el.btnNo, "x") + (dx / dist) * push + gsap.utils.random(-70, 70);
+    let ny = gsap.getProperty(el.btnNo, "y") + (dy / dist) * push + gsap.utils.random(-60, 60);
+    nx = clamp(-(r.left - margin), window.innerWidth - r.right - margin, nx);
+    ny = clamp(-(r.top - margin), window.innerHeight - r.bottom - margin, ny);
 
-    // 别跑出屏幕（也不要撑开这一行的高度）
-    const m = 24;
-    nx = gsap.utils.clamp(r.left - m, window.innerWidth - r.right + m, nx);
-    ny = gsap.utils.clamp(r.top - m, window.innerHeight - r.bottom - m, ny);
+    noX(nx);
+    noY(ny);
 
-    xTo(nx);
-    yTo(ny);
-    ctx.setHot(true);
-
-    // 挑衅文案：换得别太勤
+    // ---- 挑衅文案：换得别太勤 ----
     const now = performance.now();
-    if (now - lastTaunt > 520) {
-      lastTaunt = now;
-      const taunts = config.scene4.noTaunts;
-      el.btnNo.textContent = taunts[Math.min(dodges, taunts.length - 1)];
-      dodges++;
-      gsap.fromTo(
-        el.btnNo,
-        { scale: 0.92 },
-        { scale: 1, duration: 0.5, ease: "back.out(3)", overwrite: "auto" }
-      );
-      // 每躲一次，"好呀"就长大一点
-      gsap.to(el.btnYes, {
-        scale: 1 + Math.min(dodges, 6) * 0.06,
-        duration: 0.6,
-        ease: "back.out(2)",
-        overwrite: "auto",
-      });
-      if (dodges === 4) ctx.chime(false);
-      if (dodges >= 6) ctx.whisper(config.ui.clickHearts ? "……好吧，别逞强了" : "");
-    }
+    if (now - lastTaunt < 420) return;
+    lastTaunt = now;
+
+    const taunts = config.scene4.noTaunts;
+    el.btnNo.textContent = taunts[Math.min(dodges, taunts.length - 1)];
+    dodges++;
+
+    gsap.fromTo(
+      el.btnNo,
+      { scale: 0.94 },
+      { scale: 1, duration: 0.45, ease: "back.out(3)", overwrite: "auto" }
+    );
+    // 每躲一次，"好呀"就长大一点
+    gsap.to(el.btnYes, {
+      scale: 1 + Math.min(dodges, 6) * 0.07,
+      duration: 0.5,
+      ease: "back.out(2)",
+      overwrite: "auto",
+    });
+
+    if (dodges === 3) ctx.chime(false);
+    if (dodges === 3) ctx.whisper("……点左边那个才对");
   }
 
-  el.btnNo.addEventListener("pointerenter", dodge);
-  el.btnNo.addEventListener("pointermove", dodge);
-  el.btnNo.addEventListener("touchstart", dodge, { passive: true });
-  el.btnNo.addEventListener("click", (e) => {
-    e.preventDefault();
-    dodge(e);
+  /* 全局指针监听：这样指针还没碰到按钮就能提前躲开 */
+  const onPointerMove = (e) => dodgeAt(e.clientX, e.clientY);
+  window.addEventListener("pointermove", onPointerMove, { passive: true });
+
+  // 兜底：万一真的点到/摸到了，也别让它生效
+  el.btnNo.addEventListener(
+    "click",
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dodgeAt(e.clientX, e.clientY);
+    },
+    true
+  );
+  el.btnNo.addEventListener("touchstart", (e) => dodgeAt(e.touches[0]?.clientX, e.touches[0]?.clientY), {
+    passive: true,
   });
 
   /* ---------- "好呀"：答应的瞬间 ---------- */
@@ -464,7 +501,23 @@ export function buildScene4(el, ctx) {
     gsap.to(el.btnYes, { scale: 1, duration: 0.5, ease: "power2.out" });
   });
 
-  return { tl, btnYes: el.btnYes, btnNo: el.btnNo };
+  /** 由 main.js 在进入/离开这一幕时调用 */
+  function setActive(on) {
+    armed = on;
+    if (on) {
+      dodges = 0;
+      lastTaunt = 0;
+      gsap.set(el.btnNo, { x: 0, y: 0, scale: 1 });
+      el.btnNo.textContent = config.scene4.no;
+      // 等入场动画把按钮放稳再量原位
+      gsap.delayedCall(1.1, captureHome);
+      captureHome();
+    } else {
+      gsap.set(el.btnNo, { x: 0, y: 0, scale: 1 });
+    }
+  }
+
+  return { tl, btnYes: el.btnYes, btnNo: el.btnNo, setActive };
 }
 
 /* ============================================================

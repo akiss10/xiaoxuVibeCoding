@@ -300,6 +300,7 @@ function showCoverReady() {
 let master = null;
 let sceneStarts = [];
 let intro = null;
+let scene4 = null; // 第四幕的控制器（启停"不要"按钮的逃跑逻辑）
 const FADE = 0.7;
 
 function build() {
@@ -330,7 +331,10 @@ function build() {
   /* --- 封面 --- */
   intro = buildCover(el).tl;
   master.add(intro, 0);
-  sceneStarts.push(0);
+  // 注意：这里不要再 push 一个 0。
+  // sceneStarts 现在的含义是"每一幕的起点"，第一幕的起点由下面的游标写入。
+  // 旧写法在这里给封面占了一项，改成游标法后没删，会让整张表多一项、全体右移，
+  // 结果就是第四幕被算到第三幕的位置上（点进去看不到"可以做我女朋友吗"）。
 
   // t=0 的定义：只有封面，五幕一律透明且不可见。
   // 不写这一条的话，封面入场期间五幕会以不透明度 1 叠在封面背后
@@ -342,13 +346,19 @@ function build() {
      反过来（先 add 再往幕里加补间）会让幕的时长在加入之后变化，
      master 缓存的时长不更新，后面每一幕的起点就全算错 ——
      表现是中间几幕互相重叠、某几幕的内容永远不出现。 */
+  const s1 = buildScene1(el, ctx);
+  const s2 = buildScene2(el);
+  const s3 = buildScene3(el);
+  const s4 = buildScene4(el, ctx); // 需要留着它，换幕时要启停"不要"按钮的逃跑逻辑
+  const s5 = buildScene5(el, ctx);
   const scenes = [
-    { tl: buildScene1(el, ctx).tl, label: "星夜" },
-    { tl: buildScene2(el).tl, label: "心迹" },
-    { tl: buildScene3(el).tl, label: "一封信" },
-    { tl: buildScene4(el, ctx).tl, label: "提问" },
-    { tl: buildScene5(el, ctx).tl, label: "终章" },
+    { tl: s1.tl, label: "星夜" },
+    { tl: s2.tl, label: "心迹" },
+    { tl: s3.tl, label: "一封信" },
+    { tl: s4.tl, label: "提问" },
+    { tl: s5.tl, label: "终章" },
   ];
+  scene4 = s4;
 
   scenes.forEach((scene, i) => {
     if (!scene.tl || typeof scene.tl.eventCallback !== "function") {
@@ -413,9 +423,12 @@ function build() {
   startCoverLoops();
 
   /* --- "好呀" 被点了 --- */
+  // 单独用一个标志防连点，不要借 state.done —— 那个表示"整部影片播完了"，
+  // 借来当防抖会造成两个问题：看完一遍后回第四幕点不了"好呀"，以及按钮不躲（见 scenes.js）。
+  let yesFlying = false;
   el.btnYes.onclick = () => {
-    if (state.done) return;
-    state.done = true;
+    if (yesFlying) return;
+    yesFlying = true;
     master.pause();
     ctx.chime(true);
 
@@ -432,7 +445,7 @@ function build() {
           gsap.set(el.heartPlane, { autoAlpha: 0 });
           ctx.burst(ex, ey, 70);
           master.play(sceneStarts[4]);
-          state.done = false;
+          yesFlying = false;
         },
       })
       .to(el.heartPlane, { scale: 1.35, duration: 0.3, ease: "back.out(3)" })
@@ -544,11 +557,10 @@ function enterScene(i) {
     gsap.to(el.skipHint, { autoAlpha: 1, duration: 1.2, delay: 1.6 });
   }
 
-  // "不要"按钮回到原位，重新开始演
-  if (i === 3) {
-    gsap.set(el.btnNo, { x: 0, y: 0, scale: 1 });
-    el.btnNo.textContent = config.scene4.no;
-    el.whisper.textContent = "";
+  // 第四幕：开启"不要"按钮的逃跑逻辑（换幕时复位）
+  if (scene4 && scene4.setActive) {
+    scene4.setActive(i === 3);
+    if (i === 3) el.whisper.textContent = "";
   }
 
   // 进了终章就把提示收掉
